@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "PromptRouter",
+  "version": "1.0.0",
+  "description": "Real-time AI model recommendation \u2014 stop burning Opus on grammar fixes.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://claude.ai/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://gemini.google.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://claude.ai/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "utils/debounce.js",
+        "utils/normalizer.js",
+        "config/models.js",
+        "analyzer/classifier.js",
+        "adapters/claude.js",
+        "adapters/chatgpt.js",
+        "adapters/gemini.js",
+        "content/widget.js",
+        "content/main.js"
+      ],
+      "css": [
+        "content/widget.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

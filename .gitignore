@@ -1,0 +1,12 @@
+# OS Metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE Settings
+.vscode/
+.idea/
+
+# Chrome specific
+*.crx
+*.pem
