@@ -199,5 +199,10 @@ const PromptRouterWidget = (() => {
     }
   }
 
-  return { build, update, show, hide };
+  function getStrictMode() {
+    const checkbox = document.getElementById("pr-strict-mode");
+    return checkbox ? checkbox.checked : false;
+  }
+
+  return { build, update, show, hide, getStrictMode };
 })();
