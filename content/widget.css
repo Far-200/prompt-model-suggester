@@ -1,6 +1,6 @@
 /* content/widget.css */
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;700&display=swap');
+
 
 #pr-widget {
   position: fixed;
@@ -8,7 +8,7 @@
   right: 20px;
   z-index: 2147483647;
   width: 280px;
-  font-family: 'Syne', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   user-select: none;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
@@ -103,7 +103,7 @@
 }
 
 #pr-rec-model {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
   font-size: 13px;
   font-weight: 600;
   color: var(--pr-tier-color, #3b82f6);
@@ -134,7 +134,7 @@
 }
 
 #pr-conf-pct {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
   font-size: 10px;
   color: #555570;
   min-width: 28px;
@@ -213,7 +213,7 @@
   border: 1px solid #2a2a35;
   border-radius: 6px;
   color: #aaaacc;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
   font-size: 10px;
   padding: 4px 6px;
   cursor: pointer;
@@ -236,7 +236,7 @@
   border: 1px solid #2a2a35;
   border-radius: 99px;
   padding: 6px 12px;
-  font-family: 'Syne', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 700;
   color: #44445a;
@@ -339,7 +339,7 @@
   border: 1px solid #2a2a35;
   color: #44445a;
   font-size: 9px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
   cursor: default;
   flex-shrink: 0;
   position: relative;
@@ -359,7 +359,7 @@
   white-space: nowrap;
   z-index: 1;
   pointer-events: none;
-  font-family: 'Syne', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-style: normal;
   max-width: 200px;
   white-space: normal;
@@ -394,4 +394,12 @@
 
 #pr-strict-label:hover {
   color: #7777a0;
+}
+
+/* ── Draggable header ─────────────────────────────────────────── */
+#pr-header {
+  cursor: grab;
+}
+#pr-header:active {
+  cursor: grabbing;
 }

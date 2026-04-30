@@ -6,18 +6,19 @@
 
   // ── Detect which adapter to use ──────────────────────────────────────
   const ADAPTERS = [ClaudeAdapter, ChatGPTAdapter, GeminiAdapter];
-  const adapter  = ADAPTERS.find(a => a.matches());
+  const adapter  = ADAPTERS.find(a => a?.matches?.());
 
   if (!adapter) return; // not on a supported site
 
   // ── State ─────────────────────────────────────────────────────────────
-  let lastPromptText = "";
-  let widgetBuilt    = false;
-  let inputEl        = null;
+  let lastPromptText  = "";
+  let widgetBuilt     = false;
+  let inputEl         = null;
+  let listenersActive = false; // prevent duplicate listener attachment
 
   // ── Boot ──────────────────────────────────────────────────────────────
   function boot() {
-    inputEl = adapter.getPromptInput();
+    inputEl = adapter.getPromptInput?.() ?? null;
     if (!inputEl) return; // wait for MutationObserver
 
     if (!widgetBuilt) {
@@ -25,25 +26,28 @@
       widgetBuilt = true;
     }
 
-    attachListeners(inputEl);
+    if (!listenersActive) {
+      attachListeners(inputEl);
+      listenersActive = true;
+    }
   }
 
   // ── Listeners ─────────────────────────────────────────────────────────
   function attachListeners(el) {
     const debouncedAnalyze = debounce(analyzeAndUpdate, 350);
 
-    el.addEventListener("input",   debouncedAnalyze);
-    el.addEventListener("keyup",   debouncedAnalyze);
-    el.addEventListener("paste",   debouncedAnalyze);
+    el.addEventListener("input", debouncedAnalyze);
+    el.addEventListener("keyup", debouncedAnalyze);
+    el.addEventListener("paste", debouncedAnalyze);
 
-    // Also re-analyse periodically for model switch detection
+    // Periodic check for model switch or external text changes
     setInterval(() => {
-      const currentText = adapter.getPromptText(el);
+      const currentText = adapter.getPromptText?.(el) ?? "";
       if (currentText !== lastPromptText) {
         lastPromptText = currentText;
         analyzeAndUpdate();
       } else {
-        // Check model switch even if prompt hasn't changed
+        // Re-evaluate even if text unchanged (model may have switched)
         analyzeAndUpdate();
       }
     }, 1500);
@@ -52,11 +56,11 @@
   function analyzeAndUpdate() {
     if (!inputEl) return;
 
-    const promptText  = adapter.getPromptText(inputEl);
-    const adaptiveOn  = adapter.getAdaptiveThinking();
-    const selectedKey = adapter.getSelectedModel();
+    const promptText  = adapter.getPromptText?.(inputEl) ?? "";
+    const adaptiveOn  = adapter.getAdaptiveThinking?.() ?? false;
+    const selectedKey = adapter.getSelectedModel?.() ?? null;
 
-    // Hide widget for empty prompt
+    // Hide widget for empty/trivial prompt
     if (!promptText || promptText.trim().length < 3) {
       PromptRouterWidget.hide();
       return;
@@ -65,7 +69,8 @@
     PromptRouterWidget.show();
 
     const classification = classifyPrompt(promptText, adaptiveOn, {
-      strictMode: PromptRouterWidget.getStrictMode(),
+      // Safe fallback if getStrictMode is somehow unavailable
+      strictMode: PromptRouterWidget.getStrictMode?.() || false,
     });
 
     PromptRouterWidget.update({
@@ -76,16 +81,21 @@
     });
   }
 
-  // ── MutationObserver — wait for input to appear ────────────────────────
+  // ── MutationObserver — wait for input to appear / handle SPA navigation ──
   const observer = new MutationObserver(() => {
     if (!inputEl || !document.body.contains(inputEl)) {
-      inputEl = adapter.getPromptInput();
+      // Input was removed (e.g. new conversation started) — reset and re-attach
+      listenersActive = false;
+      inputEl = adapter.getPromptInput?.() ?? null;
       if (inputEl) {
         if (!widgetBuilt) {
           PromptRouterWidget.build(adapter.provider);
           widgetBuilt = true;
         }
-        attachListeners(inputEl);
+        if (!listenersActive) {
+          attachListeners(inputEl);
+          listenersActive = true;
+        }
       }
     }
   });
@@ -96,7 +106,7 @@
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
   } else {
-    // Retry a few times in case the SPA hasn't rendered the input yet
+    // Retry a few times for SPAs that render after document_idle
     boot();
     setTimeout(boot, 800);
     setTimeout(boot, 2000);
