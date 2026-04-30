@@ -1,17 +1,14 @@
 // adapters/claude.js
-// Detects prompt input, selected model, and adaptive thinking on claude.ai
+// Detects prompt input, selected model, adaptive thinking, and attachments on claude.ai
 
 const ClaudeAdapter = {
   provider: "claude",
 
-  /** Returns true if we're on claude.ai */
   matches() {
     return location.hostname.includes("claude.ai");
   },
 
-  /** Find the main prompt textarea */
   getPromptInput() {
-    // Claude uses a contenteditable div or textarea
     return (
       document.querySelector('div[contenteditable="true"][data-placeholder]') ||
       document.querySelector('div[contenteditable="true"].ProseMirror') ||
@@ -20,24 +17,18 @@ const ClaudeAdapter = {
     );
   },
 
-  /** Extract text from the prompt input element */
   getPromptText(inputEl) {
     if (!inputEl) return "";
     if (inputEl.tagName === "TEXTAREA") return inputEl.value;
     return inputEl.innerText || inputEl.textContent || "";
   },
 
-  /** Detect the currently selected model by reading visible UI text */
   getSelectedModel() {
-    // The model selector button shows text like "Sonnet 4.6 ˅"
-    // We look for buttons/spans near the bottom toolbar that contain model names
     const selectors = [
-      // Bottom bar model pill button
       'button[data-testid*="model"]',
       'button[aria-label*="model"]',
       'button[aria-label*="Model"]',
       '[data-testid="model-selector-dropdown"] button',
-      // Generic: any button whose text matches a known model name pattern
     ];
 
     for (const sel of selectors) {
@@ -48,21 +39,18 @@ const ClaudeAdapter = {
       }
     }
 
-    // Broader fallback: scan all buttons in the page footer / toolbar area
     const allButtons = document.querySelectorAll("button");
     for (const btn of allButtons) {
       const text = btn.innerText || btn.textContent || "";
-      // Quick heuristic: button has model-like text and is reasonably short
       if (text.length < 60 && /\b(opus|sonnet|haiku)\b/i.test(text)) {
         const key = detectModelFromText(text, "claude");
         if (key) return key;
       }
     }
 
-    // Last resort: scan page text for model selector region
     const spans = document.querySelectorAll("span, p, div");
     for (const el of spans) {
-      if (el.children.length > 0) continue; // leaf nodes only
+      if (el.children.length > 0) continue;
       const text = el.textContent || "";
       if (text.length < 50 && /\b(opus|sonnet|haiku)\s+\d/i.test(text)) {
         const key = detectModelFromText(text, "claude");
@@ -70,12 +58,10 @@ const ClaudeAdapter = {
       }
     }
 
-    return null; // unknown
+    return null;
   },
 
-  /** Detect if Adaptive Thinking toggle is on */
   getAdaptiveThinking() {
-    // Look for a toggle that has "adaptive" or "thinking" in its accessible label
     const toggleSelectors = [
       'button[role="switch"][aria-label*="daptive"]',
       'button[role="switch"][aria-label*="hinking"]',
@@ -89,10 +75,8 @@ const ClaudeAdapter = {
       }
     }
 
-    // Fallback: look for toggle button near text "Adaptive thinking"
     const allEls = document.querySelectorAll("button[role='switch'], input[type='checkbox']");
     for (const el of allEls) {
-      // Check sibling / parent text
       const parent = el.closest("div, li, label");
       if (parent && /adaptive.{0,20}thinking/i.test(parent.textContent)) {
         return el.getAttribute("aria-checked") === "true" || el.checked === true;
@@ -102,7 +86,55 @@ const ClaudeAdapter = {
     return false;
   },
 
-  /** Return the element to anchor the widget near */
+  /**
+   * Detect attached files by reading visible file chip labels in the composer.
+   * Never accesses file contents — reads only DOM text/aria labels.
+   * Returns: { hasAttachment, count, types, names }
+   */
+  getAttachments() {
+    // Claude renders uploaded files as chip elements above the input.
+    // We look for the composer container first, then scan chip-like elements.
+    const chipSelectors = [
+      // Data-testid chips (most specific)
+      '[data-testid*="file-chip"]',
+      '[data-testid*="attachment"]',
+      '[data-testid*="uploaded-file"]',
+      // Aria-label patterns Claude uses on file pills
+      '[aria-label*="Remove"][aria-label*="."]', // "Remove report.pdf" style
+      // Generic: small divs/spans inside the composer area with a filename pattern
+    ];
+
+    const found = new Set();
+
+    for (const sel of chipSelectors) {
+      document.querySelectorAll(sel).forEach(chip => {
+        const text = (chip.getAttribute("aria-label") || chip.textContent || "").trim();
+        if (text) found.add(text);
+      });
+    }
+
+    // Broader fallback: scan the composer wrapper for anything that looks like
+    // a filename (contains a dot followed by a known extension).
+    // Limit scope to the form/composer area to avoid false positives in chat history.
+    const composerArea =
+      document.querySelector("form") ||
+      document.querySelector('[data-testid*="composer"]') ||
+      document.querySelector('[role="textbox"]')?.closest("div[class]");
+
+    if (composerArea) {
+      composerArea.querySelectorAll("span, div, button, p").forEach(node => {
+        if (node.children.length > 0) return; // leaf nodes only
+        const text = (node.textContent || "").trim();
+        // Heuristic: short text that looks like a filename (has extension)
+        if (text.length > 0 && text.length < 120 && /\.\w{2,5}$/.test(text)) {
+          found.add(text);
+        }
+      });
+    }
+
+    return buildAttachmentContext([...found]);
+  },
+
   getAnchorElement() {
     return (
       document.querySelector('div[contenteditable="true"]') ||

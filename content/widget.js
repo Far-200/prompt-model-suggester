@@ -117,9 +117,15 @@ const PromptRouterWidget = (() => {
       [strictToggle, " Strict mode"]);
     const strictSection = el("div", { id: "pr-strict-section" }, [strictLabel]);
 
+    // ── Attachment hint ───────────────────────────────────────────────────
+    // Non-intrusive notice shown only when an attachment was detected.
+    const attachLine1 = el("span", { id: "pr-attach-line1" }, ["Attachment detected — recommendation adjusted."]);
+    const attachLine2 = el("span", { id: "pr-attach-line2" }, ["File contents are not read."]);
+    const attachHint  = el("div",  { id: "pr-attach-hint"  }, [attachLine1, attachLine2]);
+
     // ── Body ─────────────────────────────────────────────────────────────
     const body = el("div", { id: "pr-body" }, [
-      recRow, confRow, reasons, techHint, overkill, suggestion,
+      recRow, confRow, reasons, techHint, attachHint, overkill, suggestion,
       overrideSection, strictSection
     ]);
 
@@ -254,7 +260,7 @@ const PromptRouterWidget = (() => {
 
   // ── Update ─────────────────────────────────────────────────────────────
 
-  function update({ classification, selectedModelKey, provider, adaptiveOn }) {
+  function update({ classification, selectedModelKey, provider, adaptiveOn, attachmentContext }) {
     if (!widgetEl || isMinimised) return;
 
     const overrideKey    = userOverride;
@@ -310,6 +316,19 @@ const PromptRouterWidget = (() => {
     if (techHintEl) {
       if (classification?.hasTechHint && !overrideKey) techHintEl.classList.add("pr-show");
       else techHintEl.classList.remove("pr-show");
+    }
+
+    // Attachment hint — shown when any file was detected in the composer.
+    // Line 1 stays generic (no filenames in UI — avoids any accidental PII display).
+    // Line 2 is the privacy reassurance.
+    const attachHintEl = document.getElementById("pr-attach-hint");
+    if (attachHintEl) {
+      const ac = attachmentContext;
+      if (ac && ac.hasAttachment) {
+        attachHintEl.classList.add("pr-show");
+      } else {
+        attachHintEl.classList.remove("pr-show");
+      }
     }
 
     // Overkill detection

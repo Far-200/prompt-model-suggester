@@ -1345,6 +1345,69 @@ function classifyPrompt(prompt, adaptiveThinking = false, options = {}) {
     }
   }
 
+  // ── STEP 5d: Attachment-awareness tier adjustment ───────────────────────
+  // attachmentContext is passed in via options — never from file contents,
+  // only from visible chip labels read by each adapter's getAttachments().
+  // Rules (applied as a floor — never lower than what signals already chose):
+  //
+  //   archive/code attachment         → Premium  (whole codebase/project)
+  //   3+ attachments                  → Premium  (complex multi-doc task)
+  //   image / doc / spreadsheet /
+  //     presentation attachment       → Balanced (context needed)
+  //   attachment + analysis intent    → Balanced (reading + reasoning)
+  //   attachment + project intent     → Premium  (deep analysis)
+  let attachmentReason = null;
+
+  const ac = options && options.attachmentContext;
+  if (ac && ac.hasAttachment) {
+    const hasArchive = ac.types.some(t => t === "archive");
+    const hasImage   = ac.types.some(t => t === "image");
+    const hasDoc     = ac.types.some(t => ["document", "presentation", "spreadsheet"].includes(t));
+
+    const analysisIntent = /\b(summarize|summarise|explain|analyze|analyse|review|read|understand|describe|translate|extract|check|look at|what (is|does|are)|tell me about)\b/i.test(p);
+    const projectIntent  = /\b(codebase|project|repo|refactor|security|performance|architecture|audit|all files?|entire|full)\b/i.test(p);
+
+    if (hasArchive) {
+      // Archive/code bundle always needs full context window + reasoning
+      if (resolvedTier < MODEL_TIERS.PREMIUM) {
+        resolvedTier = MODEL_TIERS.PREMIUM;
+        attachmentReason = "Archive / code attachment";
+      }
+    } else if (ac.count >= 3) {
+      // Many attachments → complex multi-document task
+      if (resolvedTier < MODEL_TIERS.PREMIUM) {
+        resolvedTier = MODEL_TIERS.PREMIUM;
+        attachmentReason = "Multiple attachments";
+      }
+    } else if (projectIntent && (hasImage || hasDoc)) {
+      // "Review my codebase" + attachment → deep analysis
+      if (resolvedTier < MODEL_TIERS.PREMIUM) {
+        resolvedTier = MODEL_TIERS.PREMIUM;
+        attachmentReason = "Archive / code attachment";
+      }
+    } else if (hasImage || hasDoc) {
+      // Single image or document — vision/reading task needs at least Balanced
+      if (resolvedTier < MODEL_TIERS.BALANCED) {
+        resolvedTier = MODEL_TIERS.BALANCED;
+        attachmentReason = hasImage ? "Image context detected" : "Document context detected";
+      }
+    }
+
+    // analysisIntent on any attachment floors at Balanced
+    if (analysisIntent && resolvedTier < MODEL_TIERS.BALANCED) {
+      resolvedTier = MODEL_TIERS.BALANCED;
+      attachmentReason = attachmentReason || "Attachment detected";
+    }
+
+    // Always record a reason when an attachment influenced the result
+    if (attachmentReason) {
+      overrideReasonsList.unshift(attachmentReason);
+    } else {
+      // Attachment present but didn't change tier — still note it
+      overrideReasonsList.push("Attachment detected");
+    }
+  }
+
   // ── STEP 6: Build top-2 reasons ─────────────────────────────────────────
   // Override reasons take priority, then highest-scoring signal reasons.
   const signalReasons = [...firedSignals]
@@ -1390,5 +1453,7 @@ function classifyPrompt(prompt, adaptiveThinking = false, options = {}) {
     suggestions: pre.suggestions,
     // UI safety hint — show "consider upgrading" nudge when lightweight + tech terms
     hasTechHint,
+    // Whether an attachment influenced the final tier recommendation
+    hasAttachment: !!(ac && ac.hasAttachment),
   };
 }

@@ -40,14 +40,14 @@
     el.addEventListener("keyup", debouncedAnalyze);
     el.addEventListener("paste", debouncedAnalyze);
 
-    // Periodic check for model switch or external text changes
+    // Periodic check: model switch, external text changes, or new attachments
     setInterval(() => {
       const currentText = adapter.getPromptText?.(el) ?? "";
       if (currentText !== lastPromptText) {
         lastPromptText = currentText;
         analyzeAndUpdate();
       } else {
-        // Re-evaluate even if text unchanged (model may have switched)
+        // Re-evaluate even if text unchanged (model may have switched, file may have been added)
         analyzeAndUpdate();
       }
     }, 1500);
@@ -60,8 +60,16 @@
     const adaptiveOn  = adapter.getAdaptiveThinking?.() ?? false;
     const selectedKey = adapter.getSelectedModel?.() ?? null;
 
-    // Hide widget for empty/trivial prompt
-    if (!promptText || promptText.trim().length < 3) {
+    // Attachment context — reads only visible chip labels in the DOM.
+    // Falls back to a safe empty context if the adapter doesn't support it yet.
+    const attachmentContext = adapter.getAttachments?.() ?? {
+      hasAttachment: false, count: 0, types: [], names: []
+    };
+
+    // Show widget if there's a prompt OR an attachment (user may attach before typing)
+    const hasContent = (promptText && promptText.trim().length >= 3) || attachmentContext.hasAttachment;
+
+    if (!hasContent) {
       PromptRouterWidget.hide();
       return;
     }
@@ -69,22 +77,22 @@
     PromptRouterWidget.show();
 
     const classification = classifyPrompt(promptText, adaptiveOn, {
-      // Safe fallback if getStrictMode is somehow unavailable
       strictMode: PromptRouterWidget.getStrictMode?.() || false,
+      attachmentContext,
     });
 
     PromptRouterWidget.update({
       classification,
       selectedModelKey: selectedKey,
       provider: adapter.provider,
-      adaptiveOn
+      adaptiveOn,
+      attachmentContext,
     });
   }
 
   // ── MutationObserver — wait for input to appear / handle SPA navigation ──
   const observer = new MutationObserver(() => {
     if (!inputEl || !document.body.contains(inputEl)) {
-      // Input was removed (e.g. new conversation started) — reset and re-attach
       listenersActive = false;
       inputEl = adapter.getPromptInput?.() ?? null;
       if (inputEl) {
@@ -102,11 +110,10 @@
 
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // ── Initial boot (DOM may already be ready) ───────────────────────────
+  // ── Initial boot ──────────────────────────────────────────────────────
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
   } else {
-    // Retry a few times for SPAs that render after document_idle
     boot();
     setTimeout(boot, 800);
     setTimeout(boot, 2000);
