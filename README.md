@@ -22,22 +22,26 @@ This extension is pure vanilla JS — no npm, no webpack.
 ## 🧠 How It Works
 
 ### 1. Prompt Detection
+
 - Uses `MutationObserver` to detect when the chat input appears (SPAs load dynamically)
 - Attaches `input`/`keyup`/`paste` listeners to the textarea/contenteditable div
 - Reads prompt text every 350ms (debounced) while typing
 
 ### 2. Attachment Detection
+
 - Scans visible file chip labels (aria-labels, textContent) in the composer area
 - Detects: images, documents (PDF/DOCX/TXT), presentations, spreadsheets, archives/code bundles
 - Adjusts the tier recommendation based on attachment type and prompt intent
 - **Never reads file contents.** No `FileReader`, no blob URL access, no file inspection
 
 ### 3. Model Detection from UI
+
 - Scans visible button text and DOM nodes for known model name patterns
 - Works across minor UI changes since it uses text matching, not brittle CSS selectors
 - Detects: Opus 4.7, Sonnet 4.6, Haiku 4.5, GPT-4o, o1, o3, Gemini Flash, etc.
 
 ### 4. Real-Time Classification
+
 - Rule-based engine (`analyzer/classifier.js`) — ~20 weighted rules
 - Signals: prompt length, code blocks, keywords (debug/explain/architect/grammar), intent patterns
 - Attachment tier rules: image/doc → Balanced minimum; archive/zip → Premium; 3+ files → Premium
@@ -45,6 +49,7 @@ This extension is pure vanilla JS — no npm, no webpack.
 - Adaptive Thinking detected on Claude → bumps recommendation tier up
 
 ### 5. Widget UI
+
 - Floating card (bottom-right, draggable by header) with:
   - 🧠 Recommended model
   - 📊 Confidence bar
@@ -92,14 +97,14 @@ prompt-router/
 
 **PromptRouter is fully local. Nothing leaves your browser.**
 
-| What it does | What it does NOT do |
-|---|---|
-| ✅ Analyzes prompt text locally, in-memory | ❌ Send prompt text to any server |
-| ✅ Detects attachments by visible filename/type only | ❌ Read file contents |
-| ✅ Reads model selector text from the page DOM | ❌ Use FileReader or open blob URLs |
-| ✅ Stores only UI preferences (strict mode, widget position) via `chrome.storage.local` | ❌ Track, log, or store prompt text |
-| ✅ Uses only required host permissions for supported AI sites | ❌ Use analytics, telemetry, or remote scripts |
-| ✅ No backend, no external requests, no fonts CDN | ❌ Request `<all_urls>` or broad permissions |
+| What it does                                                                            | What it does NOT do                            |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| ✅ Analyzes prompt text locally, in-memory                                              | ❌ Send prompt text to any server              |
+| ✅ Detects attachments by visible filename/type only                                    | ❌ Read file contents                          |
+| ✅ Reads model selector text from the page DOM                                          | ❌ Use FileReader or open blob URLs            |
+| ✅ Stores only UI preferences (strict mode, widget position) via `chrome.storage.local` | ❌ Track, log, or store prompt text            |
+| ✅ Uses only required host permissions for supported AI sites                           | ❌ Use analytics, telemetry, or remote scripts |
+| ✅ No backend, no external requests, no fonts CDN                                       | ❌ Request `<all_urls>` or broad permissions   |
 
 ### Host Permission Justification (Chrome Web Store)
 
@@ -111,6 +116,7 @@ PromptRouter requests access only to the four supported AI chat sites:
 - `https://gemini.google.com/*`
 
 These permissions are required exclusively to:
+
 1. **Detect the prompt input box** — read typed text from `contenteditable` divs and textareas
 2. **Read the selected model name** — scan visible button/span text for known model names
 3. **Detect file attachment chips** — read visible chip labels (aria-label, textContent) to know if files are present
@@ -138,3 +144,5 @@ No other sites are accessed. No data is transmitted.
 - **Strict mode**: Toggle to prevent the extension from recommending Premium unless there's a very strong signal
 - **Adaptive Thinking**: If you toggle Adaptive Thinking on Claude, the widget bumps its recommendation tier and shows the purple "Adaptive" badge
 - **Minimise**: Click `−` to collapse to a small pill — it stays out of your way
+
+Update: Will try to put changelogs in the future🫡
